@@ -1,0 +1,10 @@
+{
+  "name": "FIAP Aula 40 – Quarkus ACL",
+  "dockerComposeFile": ["../docker-compose.yml"],
+  "service": "dev",
+  "workspaceFolder": "/workspace",
+  "shutdownAction": "stopCompose",
+  "forwardPorts": [4000, 4001],
+  "portsAttributes": { "4000": { "label": "acl" }, "4001": { "label": "legado-mock" } },
+  "customizations": { "vscode": { "extensions": ["vscjava.vscode-java-pack", "redhat.vscode-quarkus"] } }
+}

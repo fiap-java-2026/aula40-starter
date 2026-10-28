@@ -1,0 +1,23 @@
+# Aula 40 — ambiente opcional para o aluno (quem preferir container ou Codespaces).
+# Subir:   docker compose up -d --build     Entrar: docker compose exec dev bash     Parar: docker compose stop
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: fiap40-starter-aula40
+    working_dir: /workspace
+    volumes:
+      - .:/workspace               # acl e legado-mock
+      - m2:/root/.m2
+    ports:
+      - "4000:4000"                # acl (API nova)
+      - "4001:4001"                # legado-mock
+      - "4002:5005"                # debug remoto: 4002 no Windows → 5005 no contêiner
+    environment:
+      QUARKUS_HTTP_HOST: 0.0.0.0
+    command: sleep infinity
+    tty: true
+
+volumes:
+  m2:

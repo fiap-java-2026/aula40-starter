@@ -1,0 +1,492 @@
+{
+  "info": {
+    "_postman_id": "f1129e86-22c2-43dc-9947-a8c11359b76d",
+    "name": "FIAP Aula 40 — ACL e contratos de API",
+    "description": "Prática guiada e desafio da Aula 40. Pré-requisito: legado-mock em :4001 e acl em :4000 (mvn quarkus:dev). Rode a coleção inteira no Runner: todas as asserções devem passar, exceto a pasta 4 se o mock estiver derrubado.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "0. Legado (mock) — o que o fornecedor devolve",
+      "item": [
+        {
+          "name": "GET /cadastro/1 — contrato feio do legado",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{legado}}/cadastro/1",
+              "host": [
+                "{{legado}}"
+              ],
+              "path": [
+                "cadastro",
+                "1"
+              ]
+            },
+            "description": "Mostre este JSON antes de chamar a ACL: nomes em caixa alta, situação codificada em uma letra, nome com espaços sobrando."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"tem COD_CLI, NOME, SIT (vocabulário do legado)\", () => { pm.expect(j).to.have.keys(\"COD_CLI\",\"NOME\",\"SIT\"); });",
+                  "pm.test(\"SIT = A\", () => pm.expect(j.SIT).to.eql(\"A\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1. Caminho feliz — tradução",
+      "item": [
+        {
+          "name": "GET /clientes/1 — ativo (A → true), nome com trim",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{acl}}/clientes/1",
+              "host": [
+                "{{acl}}"
+              ],
+              "path": [
+                "clientes",
+                "1"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"JSON público: id, nome, ativo\", () => pm.expect(j).to.have.keys(\"id\",\"nome\",\"ativo\"));",
+                  "pm.test(\"sem SIT nem COD_CLI (slide 21)\", () => { pm.expect(j).to.not.have.property(\"SIT\"); pm.expect(j).to.not.have.property(\"COD_CLI\"); });",
+                  "pm.test(\"nome normalizado\", () => pm.expect(j.nome).to.eql(\"Ana Souza\"));",
+                  "pm.test(\"ativo = true\", () => pm.expect(j.ativo).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /clientes/2 — inativo (I → false)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{acl}}/clientes/2",
+              "host": [
+                "{{acl}}"
+              ],
+              "path": [
+                "clientes",
+                "2"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"ativo = false\", () => pm.expect(pm.response.json().ativo).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /clientes/9 — campo extra no legado é ignorado (tolerant reader)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{acl}}/clientes/9",
+              "host": [
+                "{{acl}}"
+              ],
+              "path": [
+                "clientes",
+                "9"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 mesmo com DT_CAD extra no legado (slide 12)\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"JSON público não vazou o campo novo\", () => pm.expect(pm.response.json()).to.not.have.property(\"DT_CAD\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Erro de tradução → 502",
+      "item": [
+        {
+          "name": "GET /clientes/3 — SIT=X desconhecida",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{acl}}/clientes/3",
+              "host": [
+                "{{acl}}"
+              ],
+              "path": [
+                "clientes",
+                "3"
+              ]
+            },
+            "description": "Slide 10: 'Situação X não deve virar ativo=false silenciosamente'."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"502 Bad Gateway (slide 11)\", () => pm.response.to.have.status(502));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"erro = resposta-invalida-do-legado\", () => pm.expect(j.erro).to.eql(\"resposta-invalida-do-legado\"));",
+                  "pm.test(\"mensagem cita a situação recebida\", () => pm.expect(j.mensagem).to.include(\"X\"));",
+                  "pm.test(\"tem correlação\", () => pm.expect(j.correlacao).to.be.a(\"string\").and.not.empty);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /clientes/5 — corpo que não é JSON",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{acl}}/clientes/5",
+              "host": [
+                "{{acl}}"
+              ],
+              "path": [
+                "clientes",
+                "5"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"502 (payload inválido da dependência — slide 20)\", () => pm.response.to.have.status(502));",
+                  "pm.test(\"erro = resposta-invalida-do-legado\", () => pm.expect(pm.response.json().erro).to.eql(\"resposta-invalida-do-legado\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /clientes/7 — COD_CLI não numérico",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{acl}}/clientes/7",
+              "host": [
+                "{{acl}}"
+              ],
+              "path": [
+                "clientes",
+                "7"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"502, não 500 (NumberFormatException não vaza)\", () => pm.response.to.have.status(502));",
+                  "pm.test(\"mensagem cita COD_CLI\", () => pm.expect(pm.response.json().mensagem).to.include(\"COD_CLI\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /clientes/8 — NOME vazio",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{acl}}/clientes/8",
+              "host": [
+                "{{acl}}"
+              ],
+              "path": [
+                "clientes",
+                "8"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"502\", () => pm.response.to.have.status(502));",
+                  "pm.test(\"mensagem cita NOME\", () => pm.expect(pm.response.json().mensagem).to.include(\"NOME\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Erro de negócio → 404",
+      "item": [
+        {
+          "name": "GET /clientes/4 — legado respondeu 404",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{acl}}/clientes/4",
+              "host": [
+                "{{acl}}"
+              ],
+              "path": [
+                "clientes",
+                "4"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"404 Not Found\", () => pm.response.to.have.status(404));",
+                  "const j = pm.response.json();",
+                  "pm.test(\"erro = cliente-nao-encontrado\", () => pm.expect(j.erro).to.eql(\"cliente-nao-encontrado\"));",
+                  "pm.test(\"tem correlação\", () => pm.expect(j.correlacao).to.be.a(\"string\").and.not.empty);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Erro de transporte → 503",
+      "item": [
+        {
+          "name": "GET /clientes/6 — legado demora 5 s (read-timeout 2 s)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{acl}}/clientes/6",
+              "host": [
+                "{{acl}}"
+              ],
+              "path": [
+                "clientes",
+                "6"
+              ]
+            },
+            "description": "Depois desta, derrube o mock (Ctrl+C) e repita /clientes/1: 503 em ~1 s (connect-timeout). 'Uma ACL não corrige indisponibilidade do fornecedor.'"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"503 Service Unavailable (slide 13)\", () => pm.response.to.have.status(503));",
+                  "pm.test(\"erro = legado-indisponivel\", () => pm.expect(pm.response.json().erro).to.eql(\"legado-indisponivel\"));",
+                  "pm.test(\"Retry-After presente\", () => pm.expect(pm.response.headers.get(\"Retry-After\")).to.eql(\"5\"));",
+                  "pm.test(\"respondeu em ~2 s (timeout), não em 5 s\", () => pm.expect(pm.response.responseTime).to.be.below(4000));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Validação de entrada → 400",
+      "item": [
+        {
+          "name": "GET /clientes/abc — id não numérico",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{acl}}/clientes/abc",
+              "host": [
+                "{{acl}}"
+              ],
+              "path": [
+                "clientes",
+                "abc"
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"400 Bad Request (Bean Validation, como no vídeo)\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"corpo cita 'numérico'\", () => pm.expect(pm.response.text()).to.include(\"num\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Correlação (header reaproveitado)",
+      "item": [
+        {
+          "name": "GET /clientes/3 com X-Correlation-Id próprio",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Correlation-Id",
+                "value": "demo-aula40-0001"
+              }
+            ],
+            "url": {
+              "raw": "{{acl}}/clientes/3",
+              "host": [
+                "{{acl}}"
+              ],
+              "path": [
+                "clientes",
+                "3"
+              ]
+            },
+            "description": "Slide 13: 'registre correlação sem expor dados pessoais'. O id enviado volta no corpo e aparece no log do acl."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"502\", () => pm.response.to.have.status(502));",
+                  "pm.test(\"correlação devolvida é a enviada\", () => pm.expect(pm.response.json().correlacao).to.eql(\"demo-aula40-0001\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "acl",
+      "value": "http://localhost:4000"
+    },
+    {
+      "key": "legado",
+      "value": "http://localhost:4001"
+    }
+  ]
+}
